@@ -3406,6 +3406,7 @@ dev/virtio/gpu/virtio_gpu.c		optional	virtio_gpu
 dev/virtio/scsi/virtio_scsi.c		optional	virtio_scsi
 dev/virtio/random/virtio_random.c	optional	virtio_random
 dev/virtio/console/virtio_console.c	optional	virtio_console
+dev/virtio/p9fs/virtio_p9fs.c		optional	virtio_p9fs
 dev/vkbd/vkbd.c			optional vkbd
 dev/vmgenc/vmgenc_acpi.c	optional acpi
 dev/vmware/vmxnet3/if_vmx.c		optional vmx
@@ -3552,6 +3553,12 @@ fs/nfsserver/nfs_nfsdcache.c	optional nfsd inet
 fs/nullfs/null_subr.c		optional nullfs
 fs/nullfs/null_vfsops.c		optional nullfs
 fs/nullfs/null_vnops.c		optional nullfs
+fs/p9fs/p9_client.c		optional p9fs
+fs/p9fs/p9_protocol.c		optional p9fs
+fs/p9fs/p9_transport.c		optional p9fs
+fs/p9fs/p9fs_subr.c		optional p9fs
+fs/p9fs/p9fs_vfsops.c		optional p9fs
+fs/p9fs/p9fs_vnops.c		optional p9fs
 fs/procfs/procfs.c		optional procfs
 fs/procfs/procfs_dbregs.c	optional procfs
 fs/procfs/procfs_fpregs.c	optional procfs
