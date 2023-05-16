@@ -384,6 +384,7 @@ SUBDIR=	\
 	sysvipc \
 	tarfs \
 	tcp \
+        thermal \
 	${_ti} \
 	tmpfs \
 	${_toecore} \
