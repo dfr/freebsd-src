@@ -6,6 +6,7 @@
 options 	SOC_BRCM_BCM2837
 options 	SOC_BRCM_BCM2838
 options 	SOC_BRCM_NS2
+options		SOC_BRCM_BCM2712
 
 # I2C
 device		bcm2835_bsc		# Broadcom BCM283x I2C bus
