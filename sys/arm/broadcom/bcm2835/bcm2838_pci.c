@@ -39,6 +39,7 @@
 #include <dev/ofw/openfirm.h>
 #include <dev/ofw/ofw_bus.h>
 #include <dev/ofw/ofw_bus_subr.h>
+#include <dev/hwreset/hwreset.h>
 
 #include <dev/pci/pci_host_generic.h>
 #include <dev/pci/pci_host_generic_fdt.h>
@@ -52,6 +53,10 @@
 #include "pcib_if.h"
 #include "msi_if.h"
 
+#define	TYPE_BCM2711		2711
+#define	TYPE_BCM2712		2712
+
+
 #define PCI_ID_VAL3		0x43c
 #define CLASS_SHIFT		0x10
 #define SUBCLASS_SHIFT		0x8
@@ -61,6 +66,7 @@
 #define BRIDGE_DISABLE_FLAG	0x1
 #define BRIDGE_RESET_FLAG	0x2
 #define REG_BRIDGE_SERDES_MODE			0x4204
+#define REG_BRIDGE_SERDES_MODE_2712		0x4304
 #define REG_DMA_CONFIG				0x4008
 #define REG_DMA_WINDOW_LOW			0x4034
 #define REG_DMA_WINDOW_HIGH			0x4038
@@ -70,6 +76,8 @@
 #define REG_BRIDGE_LINK_STATE			0x00bc
 #define REG_BUS_WINDOW_LOW			0x400c
 #define REG_BUS_WINDOW_HIGH			0x4010
+#define	REG_MISC_PCIE_CTRL			0x4064
+#define	REG_MISC_PCIE_CTRL_PERSTB			0x4
 #define REG_CPU_WINDOW_LOW			0x4070
 #define REG_CPU_WINDOW_START_HIGH		0x4080
 #define REG_CPU_WINDOW_END_HIGH			0x4084
@@ -119,6 +127,7 @@ struct bcm_pcib_irqsrc {
 struct bcm_pcib_softc {
 	struct generic_pcie_fdt_softc	base;
 	device_t			dev;
+	uint32_t			type;
 	bus_dma_tag_t			dmat;
 	struct mtx			config_mtx;
 	struct mtx			msi_mtx;
@@ -126,27 +135,37 @@ struct bcm_pcib_softc {
 	void				*msi_intr_cookie;
 	struct bcm_pcib_irqsrc		*msi_isrcs;
 	pci_addr_t			msi_addr;
+
+	hwreset_t			bcm2712_reset;
 };
 
 static struct ofw_compat_data compat_data[] = {
-	{"brcm,bcm2711-pcie",			1},
-	{"brcm,bcm7211-pcie",			1},
-	{"brcm,bcm7445-pcie",			1},
+	{"brcm,bcm2711-pcie",			TYPE_BCM2711},
+	{"brcm,bcm7211-pcie",			TYPE_BCM2711},
+	{"brcm,bcm7445-pcie",			TYPE_BCM2711},
+	{"brcm,bcm2712-pcie",			TYPE_BCM2712},
 	{NULL,					0}
 };
 
 static int
 bcm_pcib_probe(device_t dev)
 {
+	struct bcm_pcib_softc *sc;
 
 	if (!ofw_bus_status_okay(dev))
 		return (ENXIO);
 
-	if (!ofw_bus_search_compatible(dev, compat_data)->ocd_data)
+	sc = device_get_softc(dev);
+	sc->type = ofw_bus_search_compatible(dev, compat_data)->ocd_data;
+	if (sc->type == 0)
 		return (ENXIO);
 
-	device_set_desc(dev,
-	    "BCM2838-compatible PCI-express controller");
+	if (sc->type == TYPE_BCM2712)
+		device_set_desc(dev,
+		    "BCM2712 PCI-express controller");
+	else
+		device_set_desc(dev,
+		    "BCM2838-compatible PCI-express controller");
 	return (BUS_PROBE_DEFAULT);
 }
 
@@ -178,21 +197,41 @@ bcm_pcib_reset_controller(struct bcm_pcib_softc *sc)
 {
 	uint32_t val;
 
-	val = bcm_pcib_read_reg(sc, REG_BRIDGE_CTRL);
-	val = val | BRIDGE_RESET_FLAG | BRIDGE_DISABLE_FLAG;
-	bcm_pcib_set_reg(sc, REG_BRIDGE_CTRL, val);
+	device_printf(sc->dev, "here: %d\n", __LINE__);
+	if (sc->type == TYPE_BCM2711) {
+		val = bcm_pcib_read_reg(sc, REG_BRIDGE_CTRL);
+		val = val | BRIDGE_RESET_FLAG | BRIDGE_DISABLE_FLAG;
+		bcm_pcib_set_reg(sc, REG_BRIDGE_CTRL, val);
 
-	DELAY(100);
+		DELAY(100);
 
-	val = bcm_pcib_read_reg(sc, REG_BRIDGE_CTRL);
-	val = val & ~BRIDGE_RESET_FLAG;
-	bcm_pcib_set_reg(sc, REG_BRIDGE_CTRL, val);
+		val = bcm_pcib_read_reg(sc, REG_BRIDGE_CTRL);
+		val = val & ~BRIDGE_RESET_FLAG;
+		bcm_pcib_set_reg(sc, REG_BRIDGE_CTRL, val);
 
-	DELAY(100);
+		DELAY(100);
 
-	bcm_pcib_set_reg(sc, REG_BRIDGE_SERDES_MODE, 0);
+		bcm_pcib_set_reg(sc, REG_BRIDGE_SERDES_MODE, 0);
 
-	DELAY(100);
+		DELAY(100);
+	} else {
+	device_printf(sc->dev, "here: %d\n", __LINE__);
+		hwreset_assert(sc->bcm2712_reset);
+		device_printf(sc->dev, "here: %d\n", __LINE__);
+		//val = bcm_pcib_read_reg(sc, REG_MISC_PCIE_CTRL);
+		//device_printf(sc->dev, "here: %d\n", __LINE__);
+		//val = val & ~REG_MISC_PCIE_CTRL_PERSTB;
+		//bcm_pcib_set_reg(sc, REG_MISC_PCIE_CTRL, val);
+		//device_printf(sc->dev, "here: %d\n", __LINE__);
+		DELAY(100);
+		device_printf(sc->dev, "here: %d\n", __LINE__);
+		hwreset_deassert(sc->bcm2712_reset);
+		DELAY(100);
+		device_printf(sc->dev, "here: %d\n", __LINE__);
+		bcm_pcib_set_reg(sc, REG_BRIDGE_SERDES_MODE_2712, 0);
+		DELAY(100);
+		device_printf(sc->dev, "here: %d\n", __LINE__);
+	}
 }
 
 static void
@@ -200,9 +239,15 @@ bcm_pcib_enable_controller(struct bcm_pcib_softc *sc)
 {
 	uint32_t val;
 
-	val = bcm_pcib_read_reg(sc, REG_BRIDGE_CTRL);
-	val = val & ~BRIDGE_DISABLE_FLAG;
-	bcm_pcib_set_reg(sc, REG_BRIDGE_CTRL, val);
+	if (sc->type == TYPE_BCM2711) {
+		val = bcm_pcib_read_reg(sc, REG_BRIDGE_CTRL);
+		val = val & ~BRIDGE_DISABLE_FLAG;
+		bcm_pcib_set_reg(sc, REG_BRIDGE_CTRL, val);
+	} else {
+		val = bcm_pcib_read_reg(sc, REG_MISC_PCIE_CTRL);
+		val = val | REG_MISC_PCIE_CTRL_PERSTB;
+		bcm_pcib_set_reg(sc, REG_MISC_PCIE_CTRL, val);
+	}
 
 	DELAY(100);
 }
@@ -619,6 +664,14 @@ bcm_pcib_attach(device_t dev)
 	sc = device_get_softc(dev);
 	sc->dev = dev;
 
+	if (sc->type == TYPE_BCM2712) {
+		error = hwreset_get_by_ofw_name(sc->dev, 0, "bridge", &sc->bcm2712_reset);
+		if (error) {
+			device_printf(dev, "error: failed to lookup reset controller.\n");
+			return (error);
+		}
+	}
+
 	/*
 	 * This tag will be used in preference to the one created in
 	 * pci_host_generic.c.
@@ -637,6 +690,7 @@ bcm_pcib_attach(device_t dev)
 	if (error != 0)
 		return (error);
 
+	device_printf(sc->dev, "here: %d\n", __LINE__);
 	error = pci_host_generic_setup_fdt(dev);
 	if (error != 0)
 		return (error);
@@ -647,9 +701,12 @@ bcm_pcib_attach(device_t dev)
 
 	mtx_init(&sc->config_mtx, "bcm_pcib: config_mtx", NULL, MTX_DEF);
 
+	device_printf(sc->dev, "here: %d\n", __LINE__);
 	bcm_pcib_reset_controller(sc);
+	device_printf(sc->dev, "here: %d\n", __LINE__);
 
 	hardware_rev = bcm_pcib_read_reg(sc, REG_CONTROLLER_HW_REV) & 0xffff;
+	device_printf(sc->dev, "here: %d\n", __LINE__);
 	device_printf(dev, "hardware identifies as revision 0x%x.\n",
 	    hardware_rev);
 
@@ -719,7 +776,10 @@ bcm_pcib_attach(device_t dev)
 	bcm_pcib_set_reg(sc, PCI_ID_VAL3,
 	    PCIC_BRIDGE << CLASS_SHIFT | PCIS_BRIDGE_PCI << SUBCLASS_SHIFT);
 
-	bcm_pcib_set_reg(sc, REG_BRIDGE_SERDES_MODE, 0x2);
+	if (sc->type == TYPE_BCM2711)
+		bcm_pcib_set_reg(sc, REG_BRIDGE_SERDES_MODE, 0x2);
+	else
+		bcm_pcib_set_reg(sc, REG_BRIDGE_SERDES_MODE_2712, 0x2);
 	DELAY(100);
 
 	bcm_pcib_relocate_bridge_window(dev);
