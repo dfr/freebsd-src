@@ -74,6 +74,7 @@
 #define	SDHCI_FDT_RK3399	4
 #define	SDHCI_FDT_RK3568	5
 #define	SDHCI_FDT_XLNX_ZMP	6
+#define	SDHCI_FDT_BCM2712	7
 
 #define	RK3399_GRF_EMMCCORE_CON0		0xf000
 #define	 RK3399_CORECFG_BASECLKFREQ		0xff00
@@ -119,6 +120,7 @@ static struct ofw_compat_data compat_data[] = {
 	{ "xlnx,zy7_sdhci",		SDHCI_FDT_XLNX_ZY7 },
 	{ "rockchip,rk3568-dwcmshc",	SDHCI_FDT_RK3568 },
 	{ "xlnx,zynqmp-8.9a",		SDHCI_FDT_XLNX_ZMP },
+	{ "brcm,bcm2712-sdhci",		SDHCI_FDT_BCM2712 },
 	{ NULL, 0 }
 };
 
@@ -537,6 +539,9 @@ sdhci_fdt_probe(device_t dev)
 		break;
 	case SDHCI_FDT_XLNX_ZMP:
 		device_set_desc(dev, "ZynqMP generic fdt SDHCI controller");
+		break;
+	case SDHCI_FDT_BCM2712:
+		device_set_desc(dev, "Broadcom BCM2712 fdt SDHCI controller");
 		break;
 	default:
 		return (ENXIO);
