@@ -524,6 +524,7 @@ arm/broadcom/bcm2835/bcm283x_dwc_fdt.c			optional dwcotg fdt soc_brcm_bcm2837 | 
 arm/broadcom/bcm2835/bcm2838_pci.c			optional soc_brcm_bcm2838 fdt pci
 arm/broadcom/bcm2835/bcm2838_xhci.c			optional soc_brcm_bcm2838 fdt pci xhci
 arm/broadcom/bcm2835/raspberrypi_gpio.c			optional soc_brcm_bcm2837 gpio fdt | soc_brcm_bcm2838 gpio fdt
+dev/raspberrypi/brcmstb_gpio.c				optional soc_brcm_bcm2712 fdt
 dev/raspberrypi/brcmstb_reset.c				optional soc_brcm_bcm2712 fdt
 dev/raspberrypi/rp1.c					optional soc_brcm_bcm2712 fdt
 dev/thermal/rpi_poe_fan.c				optional rpi_poe_fan fdt
